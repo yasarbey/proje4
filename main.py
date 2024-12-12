@@ -30,29 +30,39 @@ scaler = None
 le = None
 yamnet_model = None
 
-# Model ve gerekli dosyaları yükle
 def load_models():
     global model, scaler, le, yamnet_model
     try:
+        print("Modeller yükleniyor...")
+        
+        # YAMNet modelini önce yükle
+        print("YAMNet yükleniyor...")
+        yamnet_model = hub.load('https://tfhub.dev/google/yamnet/1')
+        
+        # Ana model yükleme
+        print("Ana model yükleniyor...")
         model = tf.keras.models.load_model(
             'model/turkce_duygu_modeli_enhanced.h5',
-            custom_objects={'time_major': lambda x: x}
+            custom_objects={'time_major': lambda x: x},
+            compile=False  # Compile etmeden yükle, daha hızlı
         )
+        
+        # Diğer dosyaları yükle
+        print("Yardımcı modeller yükleniyor...")
         scaler = joblib.load('model/scaler.pkl')
         with open('model/label_encoder.pkl', 'rb') as f:
             le = pickle.load(f)
-        
-        # YAMNet modelini doğrudan hub'dan yükle
-        yamnet_model = hub.load('https://tfhub.dev/google/yamnet/1')
-        print("YAMNet modeli yüklendi")
-        
-        print("Model ve dosyalar başarıyla yüklendi")
+            
+        print("Tüm modeller başarıyla yüklendi")
+        return True
     except Exception as e:
         print(f"Model yükleme hatası: {str(e)}")
-        raise e
+        return False
 
-# Uygulama başladığında modelleri yükle
-load_models()
+# Uygulama başlatılırken modelleri yükle
+print("Uygulama başlatılıyor...")
+if not load_models():
+    raise Exception("Modeller yüklenemedi!")
 
 def extract_prosodic_features(audio, sr):
    try:
@@ -169,4 +179,11 @@ async def analyze_emotion(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=300)
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=port,
+        timeout_keep_alive=600,
+        workers=1,  # Railway'de tek worker kullanmak daha güvenli
+        loop="auto"
+    )
