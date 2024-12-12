@@ -124,6 +124,7 @@ def read_root():
 
 @app.post("/")
 async def analyze_emotion(file: UploadFile = File(...)):
+   response_timeout = 300  # 300 saniye
    try:
        print(f"Dosya alındı: {file.filename}")
 
@@ -166,6 +167,6 @@ async def analyze_emotion(file: UploadFile = File(...)):
        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
-   import uvicorn
-   port = int(os.environ.get("PORT", 8000))
-   uvicorn.run(app, host="0.0.0.0", port=port)
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=300)
