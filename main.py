@@ -8,6 +8,7 @@ import pickle
 import os
 import tensorflow_hub as hub
 from io import BytesIO
+import soundfile as sf
 
 app = FastAPI(
    title="Duygu Analizi API",
@@ -121,10 +122,12 @@ async def analyze_emotion(file: UploadFile = File(...)):
            raise HTTPException(status_code=400, detail="Gönderilen dosya boş.")
        print(f"[3] Dosya okundu, boyut: {len(contents)} bytes")
 
-       # Ses dosyasını librosa ile yükle
-       print("[4] Librosa ile ses yükleme başladı...")
-       audio, sr = librosa.load(BytesIO(contents), sr=16000, duration=10, mono=True)  # Sabit sample rate ve maksimum süre
-       print(f"[5] Ses yüklendi - örnek sayısı: {len(audio)}, örnek oranı: {sr}")
+       # Ses dosyasını yükle
+print("[4] Ses yükleme başladı...")
+with sf.SoundFile(BytesIO(contents)) as sound_file:
+    audio = sound_file.read()
+    sr = sound_file.samplerate
+print(f"[5] Ses yüklendi - örnek sayısı: {len(audio)}, örnek oranı: {sr}")
 
        # Özellik çıkarma
        features = extract_features(audio, sr)
