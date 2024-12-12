@@ -30,28 +30,21 @@ scaler = None
 le = None
 yamnet_model = None
 
-# Model klasörü oluştur
-model_path = 'model/yamnet'
-os.makedirs(model_path, exist_ok=True)
-
 # Model ve gerekli dosyaları yükle
 def load_models():
     global model, scaler, le, yamnet_model
     try:
-        model = tf.keras.models.load_model('model/turkce_duygu_modeli_enhanced.h5')
+        model = tf.keras.models.load_model(
+            'model/turkce_duygu_modeli_enhanced.h5',
+            custom_objects={'time_major': lambda x: x}
+        )
         scaler = joblib.load('model/scaler.pkl')
         with open('model/label_encoder.pkl', 'rb') as f:
             le = pickle.load(f)
         
-        # YAMNet modelini yükleme
-        try:
-            yamnet_model = hub.load(model_path)
-            print("YAMNet modeli local'den yüklendi")
-        except:
-            print("YAMNet modeli indiriliyor...")
-            yamnet_model = hub.load('https://tfhub.dev/google/yamnet/1')
-            yamnet_model.save(model_path)
-            print("YAMNet modeli indirildi ve kaydedildi")
+        # YAMNet modelini doğrudan hub'dan yükle
+        yamnet_model = hub.load('https://tfhub.dev/google/yamnet/1')
+        print("YAMNet modeli yüklendi")
         
         print("Model ve dosyalar başarıyla yüklendi")
     except Exception as e:
