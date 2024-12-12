@@ -24,13 +24,29 @@ app.add_middleware(
    allow_headers=["*"],
 )
 
+# Model klasörü oluştur
+model_path = 'model/yamnet'
+os.makedirs(model_path, exist_ok=True)
+
 # Model ve gerekli dosyaları yükle
 try:
    model = tf.keras.models.load_model('model/turkce_duygu_modeli_enhanced.h5')
    scaler = joblib.load('model/scaler.pkl')
    with open('model/label_encoder.pkl', 'rb') as f:
        le = pickle.load(f)
-   yamnet_model = hub.load('https://tfhub.dev/google/yamnet/1')
+   
+   # YAMNet modelini yükleme
+   try:
+       # Önce local'den yüklemeyi dene
+       yamnet_model = hub.load(model_path)
+       print("YAMNet modeli local'den yüklendi")
+   except:
+       # Local'de yoksa indir ve kaydet
+       print("YAMNet modeli indiriliyor...")
+       yamnet_model = hub.load('https://tfhub.dev/google/yamnet/1')
+       yamnet_model.save(model_path)
+       print("YAMNet modeli indirildi ve kaydedildi")
+   
    print("Model ve dosyalar başarıyla yüklendi")
 except Exception as e:
    print(f"Model yükleme hatası: {str(e)}")
