@@ -134,37 +134,89 @@ def read_root():
 
 @app.post("/")
 async def analyze_emotion(file: UploadFile = File(...)):
-   response_timeout = 300  # 300 saniye
    try:
-       print(f"Dosya alındı: {file.filename}")
+       print(f"[1] Dosya alındı: {file.filename}")
 
        # Dosya kontrolü
        if not file.filename.endswith('.wav'):
            raise HTTPException(status_code=400, detail="Sadece .wav formatında dosyalar kabul edilir.")
 
        # Dosyayı oku
+       print("[2] Dosya okuma başladı...")
        contents = await file.read()
        if not contents:
            raise HTTPException(status_code=400, detail="Gönderilen dosya boş.")
-
-       print(f"Dosya boyutu: {len(contents)} bytes")
+       print(f"[3] Dosya okundu, boyut: {len(contents)} bytes")
 
        # Ses dosyasını librosa ile yükle
+       print("[4] Librosa ile ses yükleme başladı...")
        audio, sr = librosa.load(BytesIO(contents), sr=None)
-       print(f"Ses yüklendi - örnek sayısı: {len(audio)}, örnek oranı: {sr}")
+       print(f"[5] Ses yüklendi - örnek sayısı: {len(audio)}, örnek oranı: {sr}")
 
-       # Özellik çıkarma
-       features = extract_features(audio, sr)
-       print("Özellikler çıkarıldı")
+       # YAMNet özellik çıkarma
+       print("[6] YAMNet özellikleri çıkarılıyor...")
+       wav_data = tf.convert_to_tensor(audio, dtype=tf.float32)
+       _, embeddings, _ = yamnet_model(wav_data)
+       yamnet_features = tf.reduce_mean(embeddings, axis=0)
+       print("[7] YAMNet özellikleri çıkarıldı")
+
+       # MFCC özellikleri
+       print("[8] MFCC özellikleri hesaplanıyor...")
+       mfccs = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=20)
+       mfccs_mean = np.mean(mfccs.T, axis=0)
+       mfccs_var = np.var(mfccs.T, axis=0)
+       print("[9] MFCC özellikleri hesaplandı")
+
+       # Chroma özellikleri
+       print("[10] Chroma özellikleri hesaplanıyor...")
+       chroma = librosa.feature.chroma_stft(y=audio, sr=sr)
+       chroma_mean = np.mean(chroma.T, axis=0)
+       print("[11] Chroma özellikleri hesaplandı")
+
+       # Mel spektrogramı
+       print("[12] Mel spektrogramı hesaplanıyor...")
+       mel_spec = librosa.feature.melspectrogram(y=audio, sr=sr)
+       mel_spec_mean = np.mean(mel_spec.T, axis=0)
+       print("[13] Mel spektrogramı hesaplandı")
+
+       # Spektral kontrast
+       print("[14] Spektral kontrast hesaplanıyor...")
+       contrast = librosa.feature.spectral_contrast(y=audio, sr=sr)
+       contrast_mean = np.mean(contrast.T, axis=0)
+       print("[15] Spektral kontrast hesaplandı")
+
+       # Prosodik özellikler
+       print("[16] Prosodik özellikler hesaplanıyor...")
+       prosodic_features = extract_prosodic_features(audio, sr)
+       print("[17] Prosodik özellikler hesaplandı")
+
+       # Özellikleri birleştir
+       print("[18] Özellikler birleştiriliyor...")
+       features = np.concatenate([
+           yamnet_features.numpy(),
+           mfccs_mean,
+           mfccs_var,
+           chroma_mean,
+           mel_spec_mean,
+           contrast_mean,
+           prosodic_features
+       ])
+       print("[19] Özellikler birleştirildi")
 
        # Özellikleri ölçekle
+       print("[20] Özellikler ölçekleniyor...")
        scaled_features = scaler.transform([features])[0]
+       print("[21] Özellikler ölçeklendi")
+
+       # Tahmin yap
+       print("[22] Model tahmini yapılıyor...")
        prediction = model.predict(np.array([scaled_features]))
+       print("[23] Model tahmini tamamlandı")
 
        # Tahmin sonuçları
        emotion = le.classes_[np.argmax(prediction)]
        confidence = float(np.max(prediction))
-       print(f"Tahmin: {emotion}, Güven: {confidence}")
+       print(f"[24] Tahmin tamamlandı: {emotion}, Güven: {confidence}")
 
        return {
            "status": "success",
@@ -173,7 +225,9 @@ async def analyze_emotion(file: UploadFile = File(...)):
        }
 
    except Exception as e:
-       print(f"Hata: {str(e)}")
+       print(f"HATA: {str(e)}")
+       print(f"Hata konumu: {e.__traceback__.tb_frame.f_code.co_name}")
+       print(f"Satır numarası: {e.__traceback__.tb_lineno}")
        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
