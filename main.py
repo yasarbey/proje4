@@ -123,7 +123,7 @@ async def analyze_emotion(file: UploadFile = File(...)):
 
        # Ses dosyasını librosa ile yükle
        print("[4] Librosa ile ses yükleme başladı...")
-       audio, sr = librosa.load(BytesIO(contents), sr=None)
+       audio, sr = librosa.load(BytesIO(contents), sr=16000, duration=10, mono=True)  # Sabit sample rate ve maksimum süre
        print(f"[5] Ses yüklendi - örnek sayısı: {len(audio)}, örnek oranı: {sr}")
 
        # Özellik çıkarma
